@@ -16,6 +16,16 @@ const ABAS_IGNORADAS = [
 // ==============================================================================
 function onEdit(e) { 
   if (!e) return; 
+
+  // 1) FAIL-FAST: Evita que o gatilho rode quando scripts (ex: importar API) editam milhares de células.
+  // Apenas edições feitas por um humano dispararão as lógicas pesadas.
+  if (e.authMode === ScriptApp.AuthMode.NONE || !e.user || Object.keys(e).length === 0) {
+    return;
+  }
+
+  // Se for uma alteração em lote feita colando dados grandes, pular também (opcional, protege VLOOKUPS em massa)
+  if (e.range.getNumRows() > 50) return;
+
   const aba = e.source.getActiveSheet(); 
   if (ABAS_IGNORADAS.includes(aba.getName())) return; 
 
@@ -25,7 +35,10 @@ function onEdit(e) {
   const startRow = range.getRow(); 
   const endRow = range.getLastRow();
   
-  range.setHorizontalAlignment("center").setVerticalAlignment("middle"); 
+  // Evita re-alinhar se a edição foi na aba inteira, poupa memória
+  if (endRow - startRow < 1000) {
+    range.setHorizontalAlignment("center").setVerticalAlignment("middle");
+  }
 
   if (endRow >= 4) { 
     const formatStartRow = Math.max(startRow, 4);

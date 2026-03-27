@@ -84,6 +84,14 @@ function importarProdutosAton() {
   Logger.log(`Importação concluída. Total importado: ${totalImportado}`);
 }
 
+/**
+ * ✅ OTIMIZAÇÃO: Consulta de Estoque Direta usando Paginação Perfeita da documentação do Aton.
+ * Não requer aba oculta. Pega os IDs da coluna ID ATON (AC=29) e grava na coluna "ESTOQUE ATON" (H=8).
+ */
+function syncAtonInventoryDirect() {
+  atualizarEstoqueAton_TodasAbas(); // Roteador nome-legado
+}
+
 function atualizarEstoqueAton_TodasAbas() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
@@ -94,18 +102,18 @@ function atualizarEstoqueAton_TodasAbas() {
   const endpoint = 'https://api.ambarxcall.com.br/AtonSNIsapi.dll/atonerp/produtos/consultarestoque';
 
   const FIRST_ROW = 4;
-  const COL_COD_ATON = 29; // AC
-  const COL_ESTOQUE = 8;   // H
+  const COL_COD_ATON = 29; // AC (ID Aton)
+  const COL_ESTOQUE = 8;   // H (Estoque Aton)
   const ARMAZENS = [1, 2];
 
-  // ✅ limite da API (você confirmou no log)
-  const MAX_PRODUTOS_POR_REQUEST = 50; // pode usar 45 se quiser folga
+  // ✅ limite da API do Aton conforme documentação: max 50
+  const MAX_PRODUTOS_POR_REQUEST = 50;
 
   for (const sheet of sheets) {
     const nome = sheet.getName().toLowerCase();
 
-    // ignora abas de base
-    if (nome.includes('produtos aton') || nome === 'produtos aton' || nome.includes('custos') || nome.includes('base')) {
+    // ignora abas de base / metadados
+    if (nome.includes('produtos aton') || nome === 'produtos aton' || nome.includes('custos') || nome.includes('base') || nome === 'webhookqueue' || nome === 'logs') {
       continue;
     }
 

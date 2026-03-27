@@ -92,9 +92,7 @@ function blingGetAuthUrl() {
 // =====================
 // 2) Callback do Web App
 // =====================
-function doGet(e) {
-  return HtmlService.createHtmlOutput("DOGET NOVO ATIVO - JWT TESTE");
-}
+// doGet(e) removido. Agora existe apenas um entry point em WebApp.gs.
 
 // =====================
 // 3) Troca code por tokens

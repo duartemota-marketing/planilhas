@@ -36,45 +36,7 @@ const PROP_LAST_BATCH_MS = "BLING_LAST_BATCH_MS";
  * 2) MENU
  * ============================================================================= */
 
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-
-  ui.createMenu("📄 XML NF-e")
-    .addItem("📥 Importar XML", "importarXmlNFe")
-    .addToUi();
-
-  ui.createMenu("🔄 Integrações")
-    .addSubMenu(
-      ui.createMenu("🟦 Bling")
-        .addItem("🔑 Autorizar Bling", "blingAbrirTelaAutorizacao")
-        .addItem("🗑️ Limpar Tokens Bling", "blingLimparTokens")
-        .addItem("🔄 Resetar e Gerar Link JWT", "blingResetarEAutorizarJWT")
-        .addSeparator()
-        .addItem("📦 Buscar Estoque", "atualizarEstoqueV3")
-        .addItem("🏷️ Buscar Produto e Custo", "atualizarProdutos")
-        .addItem("💰 Atualizar Custo no Bling", "editarPrecoNoBling")
-    )
-    .addSeparator()
-    .addSubMenu(
-      ui.createMenu("🏷️ NCM e Grupos de Produtos")
-        .addItem("🏷️ Buscar NCM", "puxarNCM_Bling_Otimizado_V2")
-        .addItem("🏷️ Atualizar NCM", "subirNCMBling")
-        .addItem("🏷️ Buscar Grupo de Produtos", "puxarGrupoProduto_Bling_V3_Rapido")
-    )
-    .addSeparator()
-    .addSubMenu(
-      ui.createMenu("🟩 Aton")
-        .addItem("📦 Buscar Estoque e Custo", "atualizarEstoqueAton_TodasAbas")
-        .addItem("➕ Buscar Produtos Novos", "importarProdutosAton")
-    )
-    .addSeparator()
-    .addItem("📅 Atualizar Data para Atual", "atualizarDatas")
-    .addSeparator()
-    .addItem("🧪 Debug Tokens", "blingDebugTokens")
-    .addItem("♻️ Testar Refresh Automático", "blingTestRefreshAuto")
-    .addItem("⚡ Forçar Refresh JWT", "blingForcarRefreshJWT")
-    .addToUi();
-}
+// onOpen() foi movido para WebApp.gs para manter a arquitetura de entry points limpa
 
 function blingAbrirTelaAutorizacao() {
   const url = blingGetAuthUrl();
@@ -167,36 +129,7 @@ function blingGetAuthUrl() {
 /**
  * ⚠️ ÚNICO doGet do projeto
  */
-function doGet(e) {
-  const props = PropertiesService.getScriptProperties();
-
-  try {
-    const code = e && e.parameter ? e.parameter.code : "";
-    const state = e && e.parameter ? e.parameter.state : "";
-    const savedState = props.getProperty("BLING_OAUTH_STATE");
-
-    if (code) {
-      if (savedState && state && savedState !== state) {
-        throw new Error("State inválido.");
-      }
-
-      const tokenData = blingExchangeCodeForTokens_(code);
-      const access = tokenData && tokenData.access_token ? tokenData.access_token : "";
-
-      return HtmlService.createHtmlOutput(
-        "✅ Bling autorizado.<br>" +
-        "Formato do token: " + (blingIsJwt_(access) ? "JWT" : "não-JWT") + "<br>" +
-        "Tamanho access_token: " + access.length + "<br>" +
-        "Pode fechar esta aba."
-      );
-    }
-
-    return HtmlService.createHtmlOutput("Online");
-  } catch (err) {
-    props.setProperty("BLING_LAST_OAUTH_ERROR", String(err && err.stack ? err.stack : err));
-    return HtmlService.createHtmlOutput("❌ Erro OAuth:<pre>" + (err && err.stack ? err.stack : err) + "</pre>");
-  }
-}
+// doGet(e) foi movido para WebApp.gs para evitar colisão de funções globais (Duplicate function definition)
 
 function blingExchangeCodeForTokens_(code) {
   const client = blingGetClient_();
@@ -637,6 +570,7 @@ function atualizarEstoqueV3() {
     const ids = batch.map(function(item) { return item.id; });
 
     try {
+      // ✅ OTIMIZAÇÃO: Consulta em array (idsProdutos[]) para economia de limites de API e preenchimento estático
       const queryIds = ids.map(function(id) {
         return "idsProdutos[]=" + encodeURIComponent(id);
       }).join("&");
@@ -645,9 +579,9 @@ function atualizarEstoqueV3() {
 
       if (res && Array.isArray(res.data)) {
         res.data.forEach(function(item) {
-  const virtual = Number(item.saldoVirtualTotal || 0);
-  resultadosMap[String(item.produto.id)] = Math.max(0, virtual);
-});
+          const virtual = Number(item.saldoVirtualTotal || 0);
+          resultadosMap[String(item.produto.id)] = Math.max(0, virtual);
+        });
       }
 
       Utilities.sleep(BLING_SAFE_DELAY_MS);
@@ -656,6 +590,7 @@ function atualizarEstoqueV3() {
     }
   }
 
+  // Grava o estoque físico direto na coluna 7 (G) substituindo ARRAYFORMULA
   const saidaOriginal = sheet.getRange(3, 7, lastRow - 2, 1).getValues();
 
   fila.forEach(function(item) {
@@ -665,6 +600,7 @@ function atualizarEstoqueV3() {
     }
   });
 
+  // Batch Update - Altíssima performance
   sheet.getRange(3, 7, saidaOriginal.length, 1).setValues(saidaOriginal);
   SpreadsheetApp.flush();
 

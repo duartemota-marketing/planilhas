@@ -70,7 +70,8 @@ function setupWebhookInfra() {
 /* =============================================================
  * WEB APP
  * ============================================================= */
-function doPost(e) {
+// doPost(e) agora foi refatorado para ser chamado a partir de WebApp.gs para evitar múltiplas definições.
+function webHookController(e) {
   const ok = function(msg) {
     return ContentService
       .createTextOutput(msg)
